@@ -1,5 +1,12 @@
 
 #EXTM3U
 
-#EXTINF:-1 tvg-id="canal-demo" group-title="Noticias",Canal de demostración
-https://TU-FUENTE-AUTORIZADA/canal-demo.m3u8
+#EXTINF:-1 tvg-id="noticias-01" group-title="Noticias",Canal de noticias
+http://moretv.online:8080/get.php?username=Marcominchala&password=DfhYqGW5Vt&type=m3u_plus
+
+#EXTINF:-1 tvg-id="deportes-01" group-title="Deportes",Canal deportivo
+http://pegaso.lat:80/get.php?username=987654321&password=123456789&type=m3u_plus
+
+#EXTINF:-1 tvg-id="entretenimiento-01" group-title="Entretenimiento",Canal de entretenimiento
+http://zonacero.lat:8080/get.php?username=prueba&password=prueba&type=m3u_plus
+
