@@ -1,0 +1,5 @@
+
+#EXTM3U
+
+#EXTINF:-1 tvg-id="canal-demo" group-title="Noticias",Canal de demostración
+https://TU-FUENTE-AUTORIZADA/canal-demo.m3u8

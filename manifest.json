@@ -1,0 +1,29 @@
+
+{
+  "name": "StreamBox Server",
+  "version": "1.0.0",
+  "updated": "2026-11-11",
+  "playlists": [
+    {
+      "id": "television",
+      "name": "Televisión en vivo",
+      "url": "playlists/television.m3u",
+      "type": "live",
+      "enabled": true
+    },
+    {
+      "id": "peliculas",
+      "name": "Películas",
+      "url": "playlists/peliculas.m3u",
+      "type": "movies",
+      "enabled": true
+    },
+    {
+      "id": "series",
+      "name": "Series",
+      "url": "playlists/series.m3u",
+      "type": "series",
+      "enabled": true
+    }
+  ]
+}

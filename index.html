@@ -1,0 +1,438 @@
+
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#090d18">
+  <title>StreamBox | Server Status</title>
+
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      background: #090d18;
+      color: #f8fafc;
+      font-family: Arial, sans-serif;
+    }
+
+    .container {
+      max-width: 1000px;
+      margin: auto;
+      padding: 35px 20px;
+    }
+
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 15px;
+      margin-bottom: 35px;
+    }
+
+    .brand {
+      font-size: 23px;
+      font-weight: bold;
+      letter-spacing: 1px;
+    }
+
+    .brand span {
+      color: #38bdf8;
+    }
+
+    .subtitle {
+      color: #94a3b8;
+      font-size: 13px;
+      margin-top: 8px;
+    }
+
+    .card {
+      background: #111827;
+      border: 1px solid #263247;
+      border-radius: 14px;
+      padding: 22px;
+      margin-bottom: 18px;
+    }
+
+    .overview {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 15px;
+      margin-bottom: 25px;
+    }
+
+    .metric {
+      background: #111827;
+      padding: 20px;
+      border-radius: 12px;
+      border: 1px solid #263247;
+    }
+
+    .metric small {
+      color: #94a3b8;
+      display: block;
+      margin-bottom: 12px;
+    }
+
+    .metric strong {
+      font-size: 25px;
+    }
+
+    .service {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 12px;
+      border-bottom: 1px solid #263247;
+      padding: 17px 0;
+    }
+
+    .service:last-child {
+      border: none;
+    }
+
+    .service-name {
+      font-weight: bold;
+    }
+
+    .service-info {
+      color: #94a3b8;
+      font-size: 12px;
+      margin-top: 7px;
+      word-break: break-all;
+    }
+
+    .status {
+      border-radius: 20px;
+      padding: 7px 12px;
+      font-size: 11px;
+      font-weight: bold;
+      background: #263247;
+      color: #cbd5e1;
+    }
+
+    .online {
+      color: #4ade80;
+      background: #123322;
+    }
+
+    .offline {
+      color: #f87171;
+      background: #401d25;
+    }
+
+    .checking {
+      color: #facc15;
+      background: #3d3214;
+    }
+
+    button {
+      border: 0;
+      border-radius: 9px;
+      padding: 12px 19px;
+      background: #0284c7;
+      color: white;
+      font-weight: bold;
+      cursor: pointer;
+    }
+
+    button:disabled {
+      opacity: .5;
+      cursor: wait;
+    }
+
+    .muted {
+      color: #94a3b8;
+      font-size: 12px;
+    }
+
+    footer {
+      margin-top: 35px;
+      text-align: center;
+      color: #64748b;
+      font-size: 12px;
+    }
+
+    @media(max-width: 600px) {
+      .overview {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <main class="container">
+
+    <header>
+      <div>
+        <div class="brand">STREAM<span>BOX</span></div>
+        <div class="subtitle">SERVER STATUS & MONITORING</div>
+      </div>
+
+      <button id="refreshBtn" onclick="checkServers()">
+        ↻ Comprobar servidores
+      </button>
+    </header>
+
+    <section class="overview">
+
+      <div class="metric">
+        <small>SERVICIOS ACTIVOS</small>
+        <strong id="onlineCount">—</strong>
+      </div>
+
+      <div class="metric">
+        <small>SERVICIOS REGISTRADOS</small>
+        <strong id="totalCount">—</strong>
+      </div>
+
+      <div class="metric">
+        <small>ÚLTIMA COMPROBACIÓN</small>
+        <strong id="lastCheck" style="font-size:16px">—</strong>
+      </div>
+
+    </section>
+
+    <section class="card">
+      <h3>Estado del sistema</h3>
+      <div id="manifestStatus" class="service">
+        <div>
+          <div class="service-name">Manifest JSON</div>
+          <div class="service-info">manifest.json</div>
+        </div>
+        <span class="status checking">ESPERANDO</span>
+      </div>
+    </section>
+
+    <section class="card">
+      <h3>Servicios y listas M3U</h3>
+      <div id="services">
+        <p class="muted">Esperando comprobación...</p>
+      </div>
+    </section>
+
+    <footer>
+      STREAMBOX SERVER · SYSTEM MONITOR<br>
+      Actualización automática cada 60 segundos
+    </footer>
+
+  </main>
+
+  <script>
+    const MANIFEST_URL = new URL(
+      "manifest.json",
+      window.location.href
+    );
+
+    const TIMEOUT = 10000;
+
+    function setStatus(element, text, type) {
+      element.innerHTML = "";
+
+      const badge = document.createElement("span");
+      badge.className = "status " + type;
+      badge.textContent = text;
+
+      element.appendChild(badge);
+    }
+
+    async function fetchWithTimeout(url) {
+      const controller = new AbortController();
+
+      const timer = setTimeout(
+        () => controller.abort(),
+        TIMEOUT
+      );
+
+      const start = performance.now();
+
+      try {
+        const response = await fetch(url, {
+          cache: "no-store",
+          signal: controller.signal
+        });
+
+        const elapsed = Math.round(
+          performance.now() - start
+        );
+
+        if (!response.ok) {
+          throw new Error("HTTP " + response.status);
+        }
+
+        return {
+          response,
+          elapsed
+        };
+
+      } finally {
+        clearTimeout(timer);
+      }
+    }
+
+    function createService(name, url) {
+      const row = document.createElement("div");
+      row.className = "service";
+
+      const info = document.createElement("div");
+
+      const title = document.createElement("div");
+      title.className = "service-name";
+      title.textContent = name;
+
+      const address = document.createElement("div");
+      address.className = "service-info";
+      address.textContent = url;
+
+      info.append(title, address);
+
+      const result = document.createElement("div");
+      result.className = "muted";
+      result.textContent = "Comprobando...";
+
+      row.append(info, result);
+
+      return { row, result };
+    }
+
+    async function checkServers() {
+      const button = document.getElementById("refreshBtn");
+      const services = document.getElementById("services");
+      const manifestStatus = document.getElementById(
+        "manifestStatus"
+      );
+
+      button.disabled = true;
+      button.textContent = "Comprobando...";
+
+      setStatus(
+        manifestStatus,
+        "COMPROBANDO",
+        "checking"
+      );
+
+      services.innerHTML = "";
+
+      try {
+        const { response, elapsed } =
+          await fetchWithTimeout(MANIFEST_URL);
+
+        const manifest = await response.json();
+
+        if (!Array.isArray(manifest.playlists)) {
+          throw new Error("Formato de manifest inválido");
+        }
+
+        setStatus(
+          manifestStatus,
+          "ONLINE · " + elapsed + " ms",
+          "online"
+        );
+
+        const playlists = manifest.playlists.filter(
+          item => item.enabled !== false
+        );
+
+        let online = 1;
+
+        document.getElementById("totalCount").textContent =
+          playlists.length + 1;
+
+        const results = await Promise.all(
+          playlists.map(async item => {
+            const url = new URL(item.url, MANIFEST_URL);
+
+            const service = createService(
+              item.name,
+              url.href
+            );
+
+            services.appendChild(service.row);
+
+            try {
+              const result = await fetchWithTimeout(url);
+
+              const content = await result.response.text();
+
+              if (!content.trimStart().startsWith("#EXTM3U")) {
+                throw new Error("M3U inválido");
+              }
+
+              const entries = (
+                content.match(/#EXTINF:/g) || []
+              ).length;
+
+              online++;
+
+              setStatus(
+                service.result,
+                "ONLINE · " + result.elapsed + " ms · " +
+                entries + " entradas",
+                "online"
+              );
+
+              return true;
+
+            } catch (error) {
+              setStatus(
+                service.result,
+                error.name === "AbortError"
+                  ? "TIMEOUT"
+                  : "ERROR / NO VERIFICABLE",
+                "offline"
+              );
+
+              return false;
+            }
+          })
+        );
+
+        document.getElementById("onlineCount").textContent =
+          online + "/" + (playlists.length + 1);
+
+        const failed = results.filter(value => !value).length;
+
+        if (failed > 0) {
+          setStatus(
+            manifestStatus,
+            "MANIFEST ONLINE · LISTAS CON ERRORES",
+            "checking"
+          );
+        }
+
+      } catch (error) {
+        setStatus(
+          manifestStatus,
+          "ERROR · " + error.message,
+          "offline"
+        );
+
+        document.getElementById("onlineCount").textContent =
+          "0";
+
+        document.getElementById("totalCount").textContent =
+          "—";
+
+        services.textContent =
+          "No fue posible cargar el manifiesto.";
+      }
+
+      document.getElementById("lastCheck").textContent =
+        new Date().toLocaleTimeString();
+
+      button.disabled = false;
+      button.textContent = "↻ Comprobar servidores";
+    }
+
+    checkServers();
+
+    setInterval(checkServers, 60000);
+  </script>
+</body>
+</html>
